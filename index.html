@@ -5,7 +5,9 @@
   <title>Catálogos | Vanessa Pessanha Acessórios</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="style.css">
-  <link rel="icon" type="image/png" href="img/logo.png">
+  <link rel="icon" href="img/logo.png">
+  <!-- PDF-JS -->
+  <script src="libs/pdfjs/pdf.js"></script>
 </head>
 <body>
 
@@ -14,21 +16,60 @@
   <h1>Catálogos</h1>
 </header>
 
-<main class="shelf">
+<main id="shelf" class="shelf"></main>
 
-  <!-- EXEMPLOS ➊ ➋  (duplique para novos catálogos) -->
-  <a class="book" href="catalogos/Catálogo-Amor e Fé.pdf" target="_blank">
-    <embed src="catalogos/colecao-amor-e-fe.pdf#page=1&zoom=75" type="application/pdf">
-    <span class="title">Coleção Amor e Fé</span>
-  </a>
+<footer>© 2025 Vanessa Pessanha Acessórios</footer>
 
- 
+<script>
+/* =========== CONFIGURA OS CATÁLOGOS =========== */
+/*  ➜  Adicione novos itens neste array: */
+const catalogos = [
+  {file:'colecao-amor-e-fe.pdf',   title:'Coleção Amor e Fé'},
+  {file:'primavera-2024.pdf',      title:'Primavera 2024'}
+];
+const pdfDir = 'catalogos/';
 
-</main>
+/* ===== PDF-JS inicialização ===== */
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'libs/pdfjs/pdf.worker.js';
 
-<footer>
-  © 2025 Vanessa Pessanha Acessórios
-</footer>
+const shelf = document.getElementById('shelf');
+
+catalogos.forEach(async cat=>{
+  const url = pdfDir + cat.file;
+
+  /* cria cartão */
+  const card = document.createElement('a');
+  card.className='card';
+  card.href=url;
+  card.target='_blank';
+
+  const canvas = document.createElement('canvas');
+  canvas.className='thumb';
+  card.appendChild(canvas);
+
+  const title = document.createElement('span');
+  title.className='title';
+  title.textContent = cat.title;
+  card.appendChild(title);
+
+  shelf.appendChild(card);
+
+  /* gera miniatura da 1ª página */
+  try{
+    const pdf = await pdfjsLib.getDocument(url).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({scale:0.25});
+    canvas.width  = viewport.width;
+    canvas.height = viewport.height;
+    await page.render({canvasContext:canvas.getContext('2d'), viewport}).promise;
+  }catch(e){
+    canvas.height=250; canvas.width=180;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#ccc'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#555'; ctx.fillText('erro',10,20);
+  }
+});
+</script>
 
 </body>
 </html>
