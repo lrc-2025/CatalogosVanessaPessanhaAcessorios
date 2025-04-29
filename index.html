@@ -5,68 +5,88 @@
   <title>Catálogos | Vanessa Pessanha Acessórios</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="style.css">
-  <link rel="icon" href="img/logo.png">
-  <!-- PDF-JS -->
-  <script src="libs/pdfjs/pdf.js"></script>
+  <link rel="icon" type="image/png" href="img/logo.png">
 </head>
 <body>
 
+<!-- ======= TOPO ======= -->
 <header>
   <img src="img/logo.png" alt="Logo Vanessa Pessanha">
   <h1>Catálogos</h1>
 </header>
 
+<!-- ======= PRATELEIRA ======= -->
 <main id="shelf" class="shelf"></main>
 
+<!-- ======= RODAPÉ ======= -->
 <footer>© 2025 Vanessa Pessanha Acessórios</footer>
 
-<script>
-/* =========== CONFIGURA OS CATÁLOGOS =========== */
-/*  ➜  Adicione novos itens neste array: */
+
+<!-- =============== SCRIPT =============== -->
+<script type="module">
+/* ------------ carrega PDF-JS ------------ */
+import * as pdfjsLib from './libs/pdfjs/pdf.js';
+pdfjsLib.GlobalWorkerOptions.workerSrc = './libs/pdfjs/pdf.worker.js';
+
+/* ------------ lista de catálogos ------------ *
+ * ➊  Para adicionar um novo catálogo:
+ *    - coloque o PDF em /catalogos/
+ *    - adicione linha no array abaixo           */
 const catalogos = [
-  {file:'colecao-amor-e-fe.pdf',   title:'Coleção Amor e Fé'},
-  {file:'primavera-2024.pdf',      title:'Primavera 2024'}
+  { file: 'colecao-amor-e-fe.pdf', title: 'Coleção Amor e Fé' },
+  { file: 'colecao-amor-e-fe2.pdf', title: 'Coleção Amor e Fé 2' }
 ];
-const pdfDir = 'catalogos/';
 
-/* ===== PDF-JS inicialização ===== */
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'libs/pdfjs/pdf.worker.js';
+const pdfDir      = 'catalogos/';
+const THUMB_W     = 180;   // largura visual do “livro”
+const THUMB_H     = 250;   // altura visual da miniatura
+const RENDER_SCALE= 0.45;  // render em alta, depois encolhe
+const shelf       = document.getElementById('shelf');
 
-const shelf = document.getElementById('shelf');
+/* ------------ cria cartões e miniaturas ------------ */
+catalogos.forEach(async cat => {
+  const url  = pdfDir + cat.file;
 
-catalogos.forEach(async cat=>{
-  const url = pdfDir + cat.file;
-
-  /* cria cartão */
+  /* cartão/link */
   const card = document.createElement('a');
-  card.className='card';
-  card.href=url;
-  card.target='_blank';
+  card.className = 'card';
+  card.href   = url;
+  card.target = '_blank';
 
+  /* miniatura canvas */
   const canvas = document.createElement('canvas');
-  canvas.className='thumb';
+  canvas.className = 'thumb';
   card.appendChild(canvas);
 
-  const title = document.createElement('span');
-  title.className='title';
-  title.textContent = cat.title;
-  card.appendChild(title);
+  /* título */
+  const span = document.createElement('span');
+  span.className = 'title';
+  span.textContent = cat.title;
+  card.appendChild(span);
 
   shelf.appendChild(card);
 
-  /* gera miniatura da 1ª página */
+  /* gera capa */
   try{
-    const pdf = await pdfjsLib.getDocument(url).promise;
+    const pdf  = await pdfjsLib.getDocument(url).promise;
     const page = await pdf.getPage(1);
-    const viewport = page.getViewport({scale:0.25});
-    canvas.width  = viewport.width;
-    canvas.height = viewport.height;
-    await page.render({canvasContext:canvas.getContext('2d'), viewport}).promise;
-  }catch(e){
-    canvas.height=250; canvas.width=180;
-    const ctx=canvas.getContext('2d');
-    ctx.fillStyle='#ccc'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle='#555'; ctx.fillText('erro',10,20);
+    const vp   = page.getViewport({ scale: RENDER_SCALE });
+
+    canvas.width  = vp.width;   // renderiza “grande”
+    canvas.height = vp.height;
+    await page.render({
+      canvasContext: canvas.getContext('2d'),
+      viewport: vp
+    }).promise;
+
+    /* ajusta tamanho visual mantendo pixels extras */
+    const ratio = THUMB_W / vp.width;
+    canvas.style.width  = THUMB_W + 'px';
+    canvas.style.height = vp.height * ratio + 'px';
+
+  }catch(err){
+    console.error('Falha ao gerar miniatura:', err);
+    canvas.style.background = '#d9d0cd';
   }
 });
 </script>
