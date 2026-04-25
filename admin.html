@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin — Catálogos | Vanessa Pessanha</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1a1410">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/png" href="img/logo.png">
+  <style>
+    /* ── Admin-specific ───────────────────────── */
+    .admin-main {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 28px 16px 60px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .admin-card {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 2px 16px rgba(0,0,0,.10);
+      padding: 24px 22px;
+    }
+
+    .admin-card h2 {
+      font-family: 'Georgia', serif;
+      font-size: 17px;
+      font-weight: normal;
+      color: #4a3e34;
+      margin-bottom: 16px;
+    }
+
+    .admin-card p {
+      font-size: 13px;
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 14px;
+    }
+
+    .admin-card a.help-link {
+      color: #c8973a;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-block;
+      margin-bottom: 16px;
+    }
+
+    .admin-card a.help-link:hover { text-decoration: underline; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      gap: 12px;
+    }
+
+    .section-header h2 { margin-bottom: 0; }
+
+    /* ── Input ────────────────────────────────── */
+    .field {
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #4a3e34;
+      margin-bottom: 7px;
+    }
+
+    .field input[type="text"],
+    .field input[type="password"] {
+      width: 100%;
+      padding: 13px 16px;
+      border: 1.5px solid #e0d5c5;
+      border-radius: 10px;
+      font-size: 15px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: #1a1410;
+      background: #faf3e5;
+      transition: border-color .2s, box-shadow .2s;
+      -webkit-appearance: none;
+    }
+
+    .field input[type="text"]:focus,
+    .field input[type="password"]:focus {
+      outline: none;
+      border-color: #c8973a;
+      box-shadow: 0 0 0 3px rgba(200,151,58,.15);
+    }
+
+    .field input[type="file"] {
+      width: 100%;
+      padding: 10px 0;
+      font-size: 14px;
+      color: #4a3e34;
+      cursor: pointer;
+    }
+
+    /* ── Buttons ──────────────────────────────── */
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #c8973a;
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      padding: 14px 32px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(200,151,58,.35);
+      transition: background .2s, transform .15s;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .btn-primary:hover  { background: #b8831f; }
+    .btn-primary:active { transform: scale(.97); }
+    .btn-primary:disabled { opacity: .55; cursor: not-allowed; transform: none; }
+
+    .btn-secondary {
+      background: none;
+      border: 1.5px solid #e0d5c5;
+      color: #4a3e34;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s;
+    }
+
+    .btn-secondary:hover { background: #faf3e5; }
+
+    .btn-danger {
+      background: none;
+      border: 1px solid #f0c0b8;
+      color: #c0392b;
+      border-radius: 8px;
+      padding: 7px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background .15s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .btn-danger:hover { background: #fff0ee; }
+
+    /* ── Error / success msg ──────────────────── */
+    .msg {
+      font-size: 13px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+
+    .msg.error   { background: #fff0ee; color: #c0392b; border: 1px solid #f0c0b8; }
+    .msg.success { background: #edfaf3; color: #1a7a46; border: 1px solid #b0e8c8; }
+
+    /* ── Catalog list ─────────────────────────── */
+    .catalog-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .catalog-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      background: #faf3e5;
+      border: 1px solid #e0d5c5;
+      border-radius: 10px;
+      transition: background .15s;
+    }
+
+    .catalog-row:hover { background: #f5ecda; }
+
+    .catalog-row-icon {
+      font-size: 28px;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+
+    .catalog-row-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .catalog-row-title {
+      font-family: 'Georgia', serif;
+      font-size: 14px;
+      color: #1a1410;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .catalog-row-file {
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 2px;
+    }
+
+    /* ── Upload progress ──────────────────────── */
+    .progress-wrap {
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .progress-bar {
+      height: 6px;
+      background: #e0d5c5;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #c8973a;
+      border-radius: 3px;
+      transition: width .3s;
+      width: 0%;
+    }
+
+    .progress-label {
+      font-size: 12px;
+      color: #888;
+      text-align: center;
+    }
+
+    /* ── Loading spinner in admin ─────────────── */
+    .loading-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 0;
+      color: #888;
+      font-size: 13px;
+    }
+
+    /* ── Token hint ───────────────────────────── */
+    .token-hint {
+      font-size: 11px;
+      color: #999;
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <img src="img/logo.png" alt="Logo Vanessa Pessanha" class="header-logo"
+         onerror="this.style.display='none'">
+    <div class="header-text">
+      <h1>Admin — Catálogos</h1>
+      <p>Vanessa Pessanha Acessórios</p>
+    </div>
+    <a href="index.html" class="btn-icon-action" title="Voltar ao site" aria-label="Voltar ao site"
+       style="color:#fff; text-decoration:none; font-size:20px;">&#8592;</a>
+  </header>
+
+  <main class="admin-main">
+
+    <!-- ── Seção de login ── -->
+    <div id="loginSection" class="admin-card">
+      <h2>Acesso ao painel</h2>
+      <p>
+        Para gerenciar os catálogos você precisa de um
+        <strong>Personal Access Token (PAT)</strong> do GitHub com acesso ao repositório.
+      </p>
+      <a class="help-link" id="patLink" href="#" target="_blank" rel="noopener noreferrer">
+        &#128279; Criar token no GitHub
+      </a>
+      <div class="field">
+        <label for="patInput">Token de acesso (PAT)</label>
+        <input type="password" id="patInput" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+               autocomplete="off" spellcheck="false">
+        <p class="token-hint">
+          O token é salvo apenas nesta aba do navegador e apagado ao fechar.
+        </p>
+      </div>
+      <button class="btn-primary" id="loginBtn">Entrar</button>
+      <div id="loginMsg" style="display:none" class="msg error"></div>
+    </div>
+
+    <!-- ── Painel admin (visível após login) ── -->
+    <div id="adminPanel" style="display:none">
+
+      <!-- Lista de catálogos -->
+      <div class="admin-card">
+        <div class="section-header">
+          <h2>Catálogos publicados</h2>
+          <button class="btn-secondary" id="logoutBtn">Sair</button>
+        </div>
+        <div id="catalogListWrap">
+          <div class="loading-row">
+            <div class="spinner small"></div>
+            <span>Carregando…</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Adicionar novo catálogo -->
+      <div class="admin-card">
+        <h2>Adicionar novo catálogo</h2>
+        <div class="field">
+          <label for="titleInput">Título do catálogo</label>
+          <input type="text" id="titleInput" placeholder="Ex: Coleção Verão 2025"
+                 maxlength="80">
+        </div>
+        <div class="field">
+          <label for="pdfInput">Arquivo PDF</label>
+          <input type="file" id="pdfInput" accept=".pdf">
+        </div>
+        <button class="btn-primary" id="uploadBtn">
+          <span>&#128228;</span> Publicar catálogo
+        </button>
+        <div id="uploadProgress" class="progress-wrap" style="display:none">
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+          <p class="progress-label" id="progressLabel"></p>
+        </div>
+        <div id="uploadMsg" style="display:none" class="msg"></div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="footer">
+    <a href="index.html">&#8592; Voltar ao site</a>
+  </footer>
+
+  <script>
+    'use strict';
+
+    /* ── Configuração ── */
+    const REPO   = 'lrc-2025/CatalogosVanessaPessanhaAcessorios';
+    const BRANCH = 'main';
+    const API    = 'https://api.github.com';
+    const PDF_DIR = 'catalogos/';
+    const JSON_PATH = 'catalogos.json';
+
+    /* PAT link */
+    document.getElementById('patLink').href =
+      'https://github.com/settings/tokens/new?scopes=public_repo&description=VanessaCatalogosAdmin';
+
+    /* Token (sessionStorage — apagado ao fechar aba) */
+    let token = sessionStorage.getItem('admin_pat') || '';
+
+    /* ── API helpers ── */
+    async function apiGet(path) {
+      const r = await fetch(`${API}/repos/${REPO}/contents/${encodeURI(path)}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json'
+        }
+      });
+      if (!r.ok) return null;
+      return r.json();
+    }
+
+    async function apiPut(path, content64, sha, message) {
+      const body = { message, content: content64, branch: BRANCH };
+      if (sha) body.sha = sha;
+      const r = await fetch(`${API}/repos/${REPO}/contents/${encodeURI(path)}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+      return r.ok;
+    }
+
+    async function apiDelete(path, sha, message) {
+      const r = await fetch(`${API}/repos/${REPO}/contents/${encodeURI(path)}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ message, sha, branch: BRANCH })
+      });
+      return r.ok;
+    }
+
+    /* ── Verificar token ── */
+    async function verifyToken(pat) {
+      const r = await fetch(`${API}/repos/${REPO}`, {
+        headers: {
+          'Authorization': `Bearer ${pat}`,
+          'Accept': 'application/vnd.github+json'
+        }
+      });
+      if (r.status === 200) {
+        const data = await r.json();
+        return data.permissions && (data.permissions.push || data.permissions.admin);
+      }
+      return false;
+    }
+
+    /* ── Encode helpers ── */
+    function jsonToBase64(obj) {
+      const str = JSON.stringify(obj, null, 2);
+      return btoa(unescape(encodeURIComponent(str)));
+    }
+
+    async function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = e => {
+          const binary = new Uint8Array(e.target.result);
+          let b64 = '';
+          for (let i = 0; i < binary.length; i++) b64 += String.fromCharCode(binary[i]);
+          resolve(btoa(b64));
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function slugify(str) {
+      return str.normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+    }
+
+    /* ── Catálogos JSON ── */
+    async function loadJsonList() {
+      const data = await apiGet(JSON_PATH);
+      if (!data) return { catalogos: [], sha: null };
+      const content = atob(data.content.replace(/\n/g, ''));
+      let catalogos = [];
+      try { catalogos = JSON.parse(content); } catch {}
+      return { catalogos: Array.isArray(catalogos) ? catalogos : [], sha: data.sha };
+    }
+
+    async function saveJsonList(catalogos, sha, message) {
+      return apiPut(JSON_PATH, jsonToBase64(catalogos), sha, message);
+    }
+
+    /* ── UI helpers ── */
+    function setMsg(id, text, type) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = 'msg ' + type;
+      el.style.display = text ? 'block' : 'none';
+    }
+
+    function setProgress(pct, label) {
+      document.getElementById('progressFill').style.width  = pct + '%';
+      document.getElementById('progressLabel').textContent = label;
+    }
+
+    /* ── Renderizar lista de catálogos ── */
+    async function renderList() {
+      const wrap = document.getElementById('catalogListWrap');
+      wrap.innerHTML = '<div class="loading-row"><div class="spinner small"></div><span>Carregando…</span></div>';
+
+      const { catalogos } = await loadJsonList();
+
+      if (!catalogos.length) {
+        wrap.innerHTML = '<p style="text-align:center;color:#aaa;padding:20px 0;font-size:13px;">Nenhum catálogo publicado ainda.</p>';
+        return;
+      }
+
+      const list = document.createElement('div');
+      list.className = 'catalog-list';
+
+      catalogos.forEach(cat => {
+        const row  = document.createElement('div');
+        row.className = 'catalog-row';
+
+        const icon = document.createElement('div');
+        icon.className  = 'catalog-row-icon';
+        icon.textContent = '📄';
+
+        const info  = document.createElement('div');
+        info.className = 'catalog-row-info';
+        const titleEl = document.createElement('div');
+        titleEl.className   = 'catalog-row-title';
+        titleEl.textContent = cat.title;
+        const fileEl = document.createElement('div');
+        fileEl.className   = 'catalog-row-file';
+        fileEl.textContent = cat.file;
+        info.appendChild(titleEl);
+        info.appendChild(fileEl);
+
+        const btn = document.createElement('button');
+        btn.className   = 'btn-danger';
+        btn.textContent = '✕ Excluir';
+        btn.dataset.file  = cat.file;
+        btn.dataset.title = cat.title;
+        btn.addEventListener('click', onDeleteClick);
+
+        row.appendChild(icon);
+        row.appendChild(info);
+        row.appendChild(btn);
+        list.appendChild(row);
+      });
+
+      wrap.innerHTML = '';
+      wrap.appendChild(list);
+    }
+
+    /* ── Excluir catálogo ── */
+    async function onDeleteClick(e) {
+      const btn   = e.currentTarget;
+      const file  = btn.dataset.file;
+      const title = btn.dataset.title;
+
+      if (!confirm(`Excluir o catálogo "${title}"?\n\nIsso remove o PDF e o remove da lista do site.`)) return;
+
+      btn.disabled    = true;
+      btn.textContent = 'Excluindo…';
+
+      try {
+        /* 1. Obter SHA do PDF */
+        const pdfData = await apiGet(PDF_DIR + file);
+        if (pdfData) {
+          const ok = await apiDelete(PDF_DIR + file, pdfData.sha, `Excluir catálogo: ${title}`);
+          if (!ok) throw new Error('Falha ao excluir o PDF.');
+        }
+
+        /* 2. Atualizar catalogos.json */
+        const { catalogos, sha } = await loadJsonList();
+        const updated = catalogos.filter(c => c.file !== file);
+        const saved   = await saveJsonList(updated, sha, `Remover "${title}" da lista`);
+        if (!saved) throw new Error('Falha ao atualizar a lista.');
+
+        /* 3. Re-renderizar */
+        await renderList();
+      } catch (err) {
+        btn.disabled    = false;
+        btn.textContent = '✕ Excluir';
+        alert('Erro ao excluir: ' + err.message);
+      }
+    }
+
+    /* ── Upload de novo catálogo ── */
+    document.getElementById('uploadBtn').addEventListener('click', async () => {
+      const titleInput = document.getElementById('titleInput');
+      const pdfInput   = document.getElementById('pdfInput');
+      const uploadBtn  = document.getElementById('uploadBtn');
+      const progress   = document.getElementById('uploadProgress');
+
+      const title = titleInput.value.trim();
+      const file  = pdfInput.files[0];
+
+      setMsg('uploadMsg', '', '');
+
+      if (!title) {
+        setMsg('uploadMsg', 'Informe o título do catálogo.', 'error');
+        titleInput.focus();
+        return;
+      }
+      if (!file) {
+        setMsg('uploadMsg', 'Selecione um arquivo PDF.', 'error');
+        return;
+      }
+      if (!file.name.toLowerCase().endsWith('.pdf')) {
+        setMsg('uploadMsg', 'O arquivo deve ser um PDF (.pdf).', 'error');
+        return;
+      }
+      if (file.size > 50 * 1024 * 1024) {
+        setMsg('uploadMsg', 'O PDF não pode ultrapassar 50 MB.', 'error');
+        return;
+      }
+
+      uploadBtn.disabled = true;
+      progress.style.display = 'flex';
+      setProgress(10, 'Lendo arquivo…');
+
+      try {
+        const fileName = slugify(title) + '.pdf';
+
+        /* Verificar se já existe */
+        const existing = await apiGet(PDF_DIR + fileName);
+
+        setProgress(30, 'Enviando PDF para o servidor…');
+        const base64 = await fileToBase64(file);
+
+        setProgress(55, 'Salvando PDF…');
+        const pdfOk = await apiPut(
+          PDF_DIR + fileName,
+          base64,
+          existing ? existing.sha : null,
+          `Publicar catálogo: ${title}`
+        );
+        if (!pdfOk) throw new Error('Falha ao enviar o PDF.');
+
+        setProgress(75, 'Atualizando lista de catálogos…');
+        const { catalogos, sha } = await loadJsonList();
+
+        /* Evitar duplicata */
+        const filtered = catalogos.filter(c => c.file !== fileName);
+        filtered.push({ file: fileName, title });
+
+        const listOk = await saveJsonList(filtered, sha, `Adicionar "${title}" à lista`);
+        if (!listOk) throw new Error('Falha ao atualizar a lista.');
+
+        setProgress(100, 'Concluído!');
+        setMsg('uploadMsg', `"${title}" publicado com sucesso!`, 'success');
+
+        titleInput.value   = '';
+        pdfInput.value     = '';
+        await renderList();
+
+      } catch (err) {
+        setMsg('uploadMsg', 'Erro: ' + err.message, 'error');
+        setProgress(0, '');
+      } finally {
+        uploadBtn.disabled     = false;
+        progress.style.display = 'none';
+      }
+    });
+
+    /* ── Login ── */
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+      const pat = document.getElementById('patInput').value.trim();
+      if (!pat) {
+        setMsg('loginMsg', 'Informe o token de acesso.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('loginBtn');
+      btn.disabled    = true;
+      btn.textContent = 'Verificando…';
+      setMsg('loginMsg', '', '');
+
+      try {
+        const ok = await verifyToken(pat);
+        if (!ok) throw new Error('Token inválido ou sem permissão de escrita no repositório.');
+
+        token = pat;
+        sessionStorage.setItem('admin_pat', token);
+        showPanel();
+      } catch (err) {
+        setMsg('loginMsg', err.message, 'error');
+      } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Entrar';
+      }
+    });
+
+    document.getElementById('patInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('loginBtn').click();
+    });
+
+    /* ── Logout ── */
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      sessionStorage.removeItem('admin_pat');
+      token = '';
+      document.getElementById('adminPanel').style.display   = 'none';
+      document.getElementById('loginSection').style.display = 'block';
+      document.getElementById('patInput').value = '';
+    });
+
+    /* ── Mostrar painel ── */
+    function showPanel() {
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('adminPanel').style.display   = 'flex';
+      document.getElementById('adminPanel').style.flexDirection = 'column';
+      document.getElementById('adminPanel').style.gap = '20px';
+      renderList();
+    }
+
+    /* ── Auto-login se token válido na sessão ── */
+    if (token) {
+      verifyToken(token).then(ok => {
+        if (ok) showPanel();
+        else {
+          sessionStorage.removeItem('admin_pat');
+          token = '';
+        }
+      });
+    }
+  </script>
+
+</body>
+</html>
