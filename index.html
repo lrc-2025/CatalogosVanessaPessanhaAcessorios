@@ -3,93 +3,280 @@
 <head>
   <meta charset="UTF-8">
   <title>Catálogos | Vanessa Pessanha Acessórios</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+  <meta name="theme-color" content="#1a1410">
   <link rel="stylesheet" href="style.css">
   <link rel="icon" type="image/png" href="img/logo.png">
 </head>
 <body>
 
-<!-- ======= TOPO ======= -->
-<header>
-  <img src="img/logo.png" alt="Logo Vanessa Pessanha">
-  <h1>Catálogos</h1>
-</header>
+  <!-- TOPO -->
+  <header class="header">
+    <img src="img/logo.png" alt="Logo Vanessa Pessanha" class="header-logo"
+         onerror="this.style.display='none'">
+    <div class="header-text">
+      <h1>Catálogos</h1>
+      <p>Vanessa Pessanha Acessórios</p>
+    </div>
+  </header>
 
-<!-- ======= PRATELEIRA ======= -->
-<main id="shelf" class="shelf"></main>
+  <!-- PRATELEIRA -->
+  <main class="main">
+    <div id="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>Carregando catálogos…</p>
+    </div>
+    <div id="empty" class="empty-state" style="display:none">
+      <span class="empty-icon">📂</span>
+      <p>Nenhum catálogo encontrado.</p>
+      <small>Adicione PDFs na pasta <code>catalogos/</code> e atualize a lista no arquivo.</small>
+    </div>
+    <div id="shelf" class="shelf"></div>
+  </main>
 
-<!-- ======= RODAPÉ ======= -->
-<footer>© 2025 Vanessa Pessanha Acessórios</footer>
+  <!-- MODAL VISUALIZADOR -->
+  <div id="modal" class="modal" style="display:none" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <span id="modalTitle" class="modal-title"></span>
+      <div class="modal-actions">
+        <a id="modalDownload" class="btn-icon-action" title="Baixar PDF" download>⬇</a>
+        <button id="modalClose" class="btn-icon-action" title="Fechar">✕</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="viewer-toolbar">
+        <button id="btnPrev" class="nav-btn" title="Página anterior">‹</button>
+        <span class="page-info">
+          <span id="pageNum">1</span> / <span id="pageTotal">1</span>
+        </span>
+        <button id="btnNext" class="nav-btn" title="Próxima página">›</button>
+        <button id="btnZoomOut" class="zoom-btn">−</button>
+        <button id="btnZoomIn"  class="zoom-btn">+</button>
+      </div>
+      <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="pdfCanvas"></canvas>
+        <div id="renderSpinner" class="render-spinner" style="display:none">
+          <div class="spinner small"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="modalOverlay" class="modal-overlay" style="display:none"></div>
 
+  <!-- PDF.JS -->
+  <script type="module">
+    import * as pdfjsLib from './libs/pdfjs/pdf.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = './libs/pdfjs/pdf.worker.js';
 
-<!-- =============== SCRIPT =============== -->
-<script type="module">
-/* ------------ carrega PDF-JS ------------ */
-import * as pdfjsLib from './libs/pdfjs/pdf.js';
-pdfjsLib.GlobalWorkerOptions.workerSrc = './libs/pdfjs/pdf.worker.js';
+    /* ─────────────────────────────────────────────
+       LISTA DE CATÁLOGOS
+       Para adicionar um novo catálogo:
+         1. Coloque o PDF na pasta /catalogos/
+         2. Adicione uma linha no array abaixo
+    ───────────────────────────────────────────── */
+    const catalogos = [
+      { file: 'colecao-amor-e-fe.pdf',  title: 'Coleção Amor e Fé'   },
+      { file: 'colecao-amor-e-fe2.pdf', title: 'Coleção Amor e Fé 2' }
+    ];
+    const pdfDir = 'catalogos/';
 
-/* ------------ lista de catálogos ------------ *
- * ➊  Para adicionar um novo catálogo:
- *    - coloque o PDF em /catalogos/
- *    - adicione linha no array abaixo           */
-const catalogos = [
-  { file: 'colecao-amor-e-fe.pdf', title: 'Coleção Amor e Fé' },
-  { file: 'colecao-amor-e-fe2.pdf', title: 'Coleção Amor e Fé 2' }
-];
+    // ── estado do visualizador ──
+    let currentPdf   = null;
+    let currentPage  = 1;
+    let totalPages   = 1;
+    let currentScale = 1.0;
+    let renderTask   = null;
 
-const pdfDir      = 'catalogos/';
-const THUMB_W     = 180;   // largura visual do “livro”
-const THUMB_H     = 250;   // altura visual da miniatura
-const RENDER_SCALE= 0.45;  // render em alta, depois encolhe
-const shelf       = document.getElementById('shelf');
+    const loading     = document.getElementById('loading');
+    const emptyState  = document.getElementById('empty');
+    const shelf       = document.getElementById('shelf');
+    const modal       = document.getElementById('modal');
+    const overlay     = document.getElementById('modalOverlay');
+    const modalTitle  = document.getElementById('modalTitle');
+    const modalDl     = document.getElementById('modalDownload');
+    const modalClose  = document.getElementById('modalClose');
+    const pageNumEl   = document.getElementById('pageNum');
+    const pageTotEl   = document.getElementById('pageTotal');
+    const canvas      = document.getElementById('pdfCanvas');
+    const ctx         = canvas.getContext('2d');
+    const renderSpin  = document.getElementById('renderSpinner');
+    const canvasWrap  = document.getElementById('canvasWrap');
 
-/* ------------ cria cartões e miniaturas ------------ */
-catalogos.forEach(async cat => {
-  const url  = pdfDir + cat.file;
+    // ── Gerar cards na prateleira ──
+    async function buildShelf() {
+      if (!catalogos.length) {
+        loading.style.display = 'none';
+        emptyState.style.display = 'flex';
+        return;
+      }
 
-  /* cartão/link */
-  const card = document.createElement('a');
-  card.className = 'card';
-  card.href   = url;
-  card.target = '_blank';
+      const jobs = catalogos.map(async (cat) => {
+        const url = pdfDir + cat.file;
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.setAttribute('role', 'button');
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('aria-label', `Abrir ${cat.title}`);
 
-  /* miniatura canvas */
-  const canvas = document.createElement('canvas');
-  canvas.className = 'thumb';
-  card.appendChild(canvas);
+        const thumb = document.createElement('canvas');
+        thumb.className = 'card-thumb';
+        card.appendChild(thumb);
 
-  /* título */
-  const span = document.createElement('span');
-  span.className = 'title';
-  span.textContent = cat.title;
-  card.appendChild(span);
+        const badge = document.createElement('div');
+        badge.className = 'card-badge';
+        badge.textContent = 'PDF';
+        card.appendChild(badge);
 
-  shelf.appendChild(card);
+        const info = document.createElement('div');
+        info.className = 'card-info';
+        info.innerHTML = `
+          <span class="card-title">${cat.title}</span>
+          <div class="card-btns">
+            <button class="btn-open">👁 Ver</button>
+            <a class="btn-dl" href="${url}" download title="Baixar">⬇</a>
+          </div>
+        `;
+        card.appendChild(info);
 
-  /* gera capa */
-  try{
-    const pdf  = await pdfjsLib.getDocument(url).promise;
-    const page = await pdf.getPage(1);
-    const vp   = page.getViewport({ scale: RENDER_SCALE });
+        shelf.appendChild(card);
 
-    canvas.width  = vp.width;   // renderiza “grande”
-    canvas.height = vp.height;
-    await page.render({
-      canvasContext: canvas.getContext('2d'),
-      viewport: vp
-    }).promise;
+        // miniaturas
+        try {
+          const pdf = await pdfjsLib.getDocument(url).promise;
+          const page = await pdf.getPage(1);
+          const vp   = page.getViewport({ scale: 0.5 });
+          thumb.width  = vp.width;
+          thumb.height = vp.height;
+          await page.render({ canvasContext: thumb.getContext('2d'), viewport: vp }).promise;
+        } catch {
+          thumb.style.background = '#ede6d8';
+          thumb.width  = 180;
+          thumb.height = 250;
+          const tc = thumb.getContext('2d');
+          tc.fillStyle = '#c8973a33';
+          tc.fillRect(0, 0, 180, 250);
+          tc.fillStyle = '#c8973a';
+          tc.font = '48px serif';
+          tc.textAlign = 'center';
+          tc.fillText('📄', 90, 140);
+        }
 
-    /* ajusta tamanho visual mantendo pixels extras */
-    const ratio = THUMB_W / vp.width;
-    canvas.style.width  = THUMB_W + 'px';
-    canvas.style.height = vp.height * ratio + 'px';
+        // abrir no visualizador
+        const openViewer = () => openModal(url, cat.title);
+        card.querySelector('.btn-open').addEventListener('click', openViewer);
+        card.addEventListener('keypress', e => { if (e.key === 'Enter') openViewer(); });
+      });
 
-  }catch(err){
-    console.error('Falha ao gerar miniatura:', err);
-    canvas.style.background = '#d9d0cd';
-  }
-});
-</script>
+      await Promise.all(jobs);
+      loading.style.display = 'none';
+    }
+
+    // ── Visualizador modal ──
+    async function openModal(url, title) {
+      modalTitle.textContent = title;
+      modalDl.href = url;
+      currentPage  = 1;
+      currentScale = fitScale();
+      modal.style.display   = 'flex';
+      overlay.style.display = 'block';
+      document.body.style.overflow = 'hidden';
+      modal.focus();
+
+      try {
+        currentPdf = await pdfjsLib.getDocument(url).promise;
+        totalPages = currentPdf.numPages;
+        pageTotEl.textContent = totalPages;
+        await renderPage(currentPage);
+      } catch (err) {
+        console.error(err);
+        alert('Não foi possível abrir o catálogo.');
+        closeModal();
+      }
+    }
+
+    function closeModal() {
+      modal.style.display   = 'none';
+      overlay.style.display = 'none';
+      document.body.style.overflow = '';
+      currentPdf = null;
+    }
+
+    async function renderPage(num) {
+      if (!currentPdf) return;
+      if (renderTask) { renderTask.cancel(); renderTask = null; }
+      renderSpin.style.display = 'flex';
+      pageNumEl.textContent = num;
+      updateNavBtns();
+
+      try {
+        const page = await currentPdf.getPage(num);
+        const vp   = page.getViewport({ scale: currentScale });
+        canvas.width  = vp.width;
+        canvas.height = vp.height;
+        renderTask = page.render({ canvasContext: ctx, viewport: vp });
+        await renderTask.promise;
+      } catch (e) {
+        if (e?.name !== 'RenderingCancelledException') console.error(e);
+      } finally {
+        renderSpin.style.display = 'none';
+        renderTask = null;
+      }
+    }
+
+    function fitScale() {
+      const maxW = Math.min(window.innerWidth - 32, 700);
+      return maxW / 595; // A4 pt width
+    }
+
+    function updateNavBtns() {
+      document.getElementById('btnPrev').disabled = currentPage <= 1;
+      document.getElementById('btnNext').disabled = currentPage >= totalPages;
+    }
+
+    // ── eventos modal ──
+    modalClose.addEventListener('click', closeModal);
+    overlay.addEventListener('click', closeModal);
+
+    document.getElementById('btnPrev').addEventListener('click', () => {
+      if (currentPage > 1) { currentPage--; renderPage(currentPage); }
+    });
+    document.getElementById('btnNext').addEventListener('click', () => {
+      if (currentPage < totalPages) { currentPage++; renderPage(currentPage); }
+    });
+    document.getElementById('btnZoomIn').addEventListener('click', () => {
+      currentScale = Math.min(currentScale + 0.2, 3.0);
+      renderPage(currentPage);
+    });
+    document.getElementById('btnZoomOut').addEventListener('click', () => {
+      currentScale = Math.max(currentScale - 0.2, 0.4);
+      renderPage(currentPage);
+    });
+
+    // swipe no mobile
+    let touchStartX = 0;
+    canvasWrap.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+    canvasWrap.addEventListener('touchend',   e => {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      if (Math.abs(dx) > 50) {
+        if (dx < 0 && currentPage < totalPages) { currentPage++; renderPage(currentPage); }
+        if (dx > 0 && currentPage > 1)          { currentPage--; renderPage(currentPage); }
+      }
+    }, { passive: true });
+
+    // teclado
+    document.addEventListener('keydown', e => {
+      if (modal.style.display === 'none') return;
+      if (e.key === 'ArrowRight' && currentPage < totalPages) { currentPage++; renderPage(currentPage); }
+      if (e.key === 'ArrowLeft'  && currentPage > 1)          { currentPage--; renderPage(currentPage); }
+      if (e.key === 'Escape') closeModal();
+    });
+
+    buildShelf();
+  </script>
+
+  <footer class="footer">
+    © 2025 Vanessa Pessanha Acessórios
+  </footer>
 
 </body>
 </html>
